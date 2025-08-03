@@ -18,4 +18,3 @@ install: libTimer.a
 
 clean:
 	rm -f timerLib.a *.o
-
