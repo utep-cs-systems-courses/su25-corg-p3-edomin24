@@ -1,37 +1,30 @@
-all: main.elf
+CPU             	= msp430g2553
+CFLAGS          	= -mmcu=${CPU} -Os -I../h
+LDFLAGS		        = -L../lib -L/opt/ti/msp430_gcc/include/
+CC              	= msp430-elf-gcc
+AS              	= msp430-elf-gcc -mmcu=${CPU} -c
 
-CPU       = msp430g2553
-CFLAGS    = -mmcu=${CPU} -Os -I../h
-LDFLAGS   = -L/opt/ti/msp430_gcc/include -L../lib
-CC        = msp430-elf-gcc
-AS        = msp430-elf-as
-AR        = msp430-elf-ar
+COMMON_OBJECTS  	= main.o statemachines.o switch.o
 
-LCDLIB_OBJS = \
-	../lcdLib/font-11x16.o \
-	../lcdLib/font-8x12.o \
-	../lcdLib/font-5x7.o \
-	../lcdLib/lcdutils.o \
-	../lcdLib/lcddraw.o
+all: project.elf
 
-../lib/libLcd.a: $(LCDLIB_OBJS)
-	$(AR) crs $@ $^
+project.elf: ${COMMON_OBJECTS} wdt_handler.o
+	${CC} ${CFLAGS} ${LDFLAGS} -o $@ $^ -lTimer -lLcd
 
-../lcdLib/%.o: ../lcdLib/%.c
-	$(CC) $(CFLAGS) -c -o $@ $<
+main.o: main.c statemachines.h switch.h
+	${CC} ${CFLAGS} -c main.c -o main.o
 
-OBJS = main.o wdt_handler.o
-main.o: main.c
-	$(CC) $(CFLAGS) -c -o $@ $<
+statemachines.o: statemachines.c statemachines.h switch.h
+	${CC} ${CFLAGS} -c statemachines.c -o statemachines.o
+
+switch.o: switch.c switch.h
+	${CC} ${CFLAGS} -c switch.c -o switch.o
 
 wdt_handler.o: wdt_handler.s
-	$(AS) -mmcu=${CPU} -o $@ $<
+	${AS} wdt_handler.s -o wdt_handler.o
 
-main.elf: $(OBJS) ../lib/libLcd.a
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ -lTimer
-
-load: main.elf
+load: project.elf
 	msp430loader.sh $^
 
 clean:
-	rm -f *.o *.elf
+	rm -f *.o *.elf *~
